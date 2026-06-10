@@ -30,7 +30,6 @@ export default function Sidebar({
 
   // ================= ADMIN =================
   if (user.role === "admin") {
-
     menu = [
 
       {
@@ -62,6 +61,12 @@ export default function Sidebar({
             name: "Admins",
             path: "/admins"
           },
+
+          {
+            name: "Parents",
+            path: "/parents-admin"
+          },
+
         ]
       },
 
@@ -83,6 +88,9 @@ export default function Sidebar({
         path: "/enrollments"
       },
 
+      { name: "Fee Management", 
+        path: "/admin/fees"  
+      },
 
       {
         name: "Profile",
@@ -112,6 +120,10 @@ export default function Sidebar({
         name: "Attendance",
         path: "/teacher/attendance"
       },
+      
+      { name: "Messages", 
+        path: "/teacher/chat" 
+      },
 
       {
         name: "Notifications",
@@ -122,6 +134,7 @@ export default function Sidebar({
         name: "Profile",
         path: "/profile"
       },
+
     ];
   }
 
@@ -166,6 +179,21 @@ export default function Sidebar({
     ];
   }
 
+  // ================= PARENT =================
+  else if (user.role === "parent") {
+    menu = [
+      { name: "Dashboard", path: "/parent" },
+      { name: "Grades", path: "/parent/grades" },
+      { name: "Attendance", path: "/parent/attendance" },
+      { name: "Assignments", path: "/parent/assignments" },
+      { name: "Fees", path: "/parent/fees" },
+      { name: "Messages", path: "/parent/chat" },
+      { name: "Notifications", path: "/notifications" },
+      { name: "Profile", path: "/profile" },
+    ];
+  }
+
+  
   // ================= ACTIVE =================
   const isActive = (path) => {
 
@@ -207,6 +235,17 @@ export default function Sidebar({
       return (
         location.pathname ===
         "/dashboard"
+      );
+    }
+
+    // ================= PARENT DASHBOARD =================
+    if (
+      path === "/parent"
+    ) {
+
+      return (
+        location.pathname ===
+        "/parent"
       );
     }
 

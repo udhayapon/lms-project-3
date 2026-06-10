@@ -160,6 +160,7 @@ export default function Notifications() {
       await API.post(
         `/notifications/${notification.id}/mark_read/`
       );
+      fetchNotifications();
     }
 
     const user = JSON.parse(
@@ -168,11 +169,16 @@ export default function Notifications() {
 
     const role = user?.role?.toLowerCase();
 
+    // Parents: notifications are read-only, don't navigate anywhere
+    if (role === "parent") {
+      return;
+    }
+
     // Marks page
     if (
       notification.notification_type === "marks"
     ) {
-      navigate("/student/grades");
+      if (role === "student") navigate("/student/grades");
       return;
     }
 
@@ -182,7 +188,7 @@ export default function Notifications() {
         navigate(
           `/teacher/subject/${notification.teaching_assignment}`
         );
-      } else {
+      } else if (role === "student") {
         navigate(
           `/student/subject/${notification.teaching_assignment}`
         );

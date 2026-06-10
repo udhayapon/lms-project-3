@@ -33,18 +33,20 @@ body {
 .sidebar {
   width: 240px;
   background: #0f172a;
-
   border-right: 1px solid rgba(255,255,255,0.05);
-
   color: #e2e8f0;
   padding: 20px 16px;
-
   display: flex;
   flex-direction: column;
   gap: 20px;
-
   flex-shrink: 0;
+  min-height: 100vh;        
+  position: sticky;        
+  top: 0;
+  align-self: flex-start;   
+  overflow-y: auto;         
 }
+
 
 /* MOBILE OVERLAY */
 .sidebar-overlay {
@@ -147,7 +149,7 @@ body {
   flex: 1;
   width: 100%;
   max-width: 100%;
-  padding: 30px;
+  padding: 24px 30px;
   overflow-y: auto;
 
   display: flex;
@@ -417,5 +419,12 @@ tr:hover {
 
   .content {
     padding: 20px;
+    width: 100%;        /* ✅ FIX: fill full width */
+    margin-left: 0;     /* ✅ FIX: no gap from sidebar */
+  }
+
+  /* ✅ FIX: remove sidebar space from layout when hidden */
+  .layout {
+    display: block;
   }
 }

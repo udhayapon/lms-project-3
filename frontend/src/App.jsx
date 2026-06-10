@@ -29,6 +29,7 @@ import AdminUsers from "./pages/Admin/AdminUsers";
 
 import Enrollments from "./pages/Admin/Enrollments";
 import Departments from "./pages/Admin/Departments";
+import AdminFees from "./features/fees/AdminFees";
 
 // ===== TEACHER =====
 import TeacherHome from "./pages/Teacher/TeacherHome";
@@ -36,6 +37,7 @@ import SubjectDetails from "./pages/Teacher/SubjectDetails";
 import AssignmentTeacher from "./features/assignments/AssignmentTeacher";       // ADD THIS
 import TeacherSubjects from "./features/subjects/Subjects";               // ADD THIS
 import TeacherStudents from "./pages/Admin/Students"; 
+import TeacherChat from "./pages/Teacher/TeacherChat";
 
 // ===== ASSIGNMENTS =====
 import AssignmentSubmissions from "./features/assignments/AssignmentSubmissions";
@@ -45,6 +47,16 @@ import StudentHome from "./pages/Student/StudentHome";
 import StudentCourses from "./pages/Student/StudentCourses";
 import StudentSubjectDetails from "./pages/Student/StudentSubjectDetails";
 import StudentGrades from "./pages/Student/StudentGrades";
+
+// ===== PARENTS =====
+import ParentDashboard from "./features/parent/ParentDashboard";
+import ParentGrades from "./features/parent/ParentGrades";
+import ParentAttendance from "./features/parent/ParentAttendance";
+import ParentAssignments from "./features/parent/ParentAssignments";
+import ParentFees from "./features/parent/ParentFees";
+import Parents from "./pages/Admin/Parents";
+import ParentMessages from "./features/Parent/ParentMessages";
+import ParentChat from "./features/parent/ParentChat";
 
 
 // ================= USER HELPER =================
@@ -158,6 +170,13 @@ function RoleRedirect() {
       replace
     />
   );
+
+  if (role === "parent")
+    return 
+    <Navigate 
+    to="/parent" 
+    replace 
+    />;
 }
 
 
@@ -207,8 +226,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-
 
         {/* ================= ADMIN ================= */}
 
@@ -289,6 +306,15 @@ function App() {
           }
         />
 
+        {/* ================= FEE MANAGEMENT ================= */}
+        <Route
+          path="/admin/fees"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <AdminFees />
+              </ProtectedRoute>
+            }
+        />
 
 
         {/* ================= YEARS ================= */}
@@ -492,7 +518,26 @@ function App() {
           }
         />
 
+        {/* ================= PARENT ================= */}
+        
+        <Route 
+        path="/parent" element={<ProtectedRoute role="parent"><ParentDashboard /></ProtectedRoute>} />
+        <Route path="/parent/grades" element={<ProtectedRoute role="parent"><ParentGrades /></ProtectedRoute>} />
+        <Route path="/parent/attendance" element={<ProtectedRoute role="parent"><ParentAttendance /></ProtectedRoute>} />
+        <Route path="/parent/assignments" element={<ProtectedRoute role="parent"><ParentAssignments /></ProtectedRoute>} />
+        <Route path="/parent/fees" element={<ProtectedRoute role="parent"><ParentFees /></ProtectedRoute>} />
+        <Route path="/parent/messages" element={<ProtectedRoute role="parent"><ParentMessages /></ProtectedRoute>} />
+        <Route path="/parent/chat" element={<ProtectedRoute role="parent"><ParentChat /></ProtectedRoute>} />
+        <Route path="/teacher/chat" element={<ProtectedRoute role="teacher"><TeacherChat /></ProtectedRoute>} />
 
+        <Route
+          path="/parents-admin"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <Parents />
+            </ProtectedRoute>
+          }
+        />
 
         {/* ================= PROFILE ================= */}
 
@@ -521,7 +566,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
 
 
         {/* ===== FALLBACK ===== */}

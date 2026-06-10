@@ -46,6 +46,7 @@ class User(AbstractUser):
         ('student', 'Student'),
         ('teacher', 'Teacher'),
         ('admin', 'Admin'),
+        ('parent', 'Parent'),
     )
 
     # ================= ROLE =================
@@ -208,3 +209,17 @@ class User(AbstractUser):
     def __str__(self):
 
         return self.username
+    
+# ================= parentsprofile =================
+class ParentProfile(models.Model):
+    user = models.OneToOneField(
+        'users.User', on_delete=models.CASCADE,
+        related_name='parent_profile',
+        limit_choices_to={'role': 'parent'}
+    )
+    children = models.ManyToManyField(
+        'users.User', related_name='parents',
+        limit_choices_to={'role': 'student'}, blank=True
+    )
+    def __str__(self):
+        return self.user.username

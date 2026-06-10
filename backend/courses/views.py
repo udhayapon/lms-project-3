@@ -1,6 +1,7 @@
 # ===================== IMPORTS =====================
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.db import models
 
 from rest_framework import viewsets
 from rest_framework.decorators import (  api_view, permission_classes, action)
@@ -8,6 +9,8 @@ from rest_framework.permissions import ( IsAuthenticated, BasePermission, SAFE_M
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework import status
+
+from decimal import Decimal, InvalidOperation
 
 from .models import (
     Course,
@@ -25,6 +28,7 @@ from .models import (
     Notification,
     DiscussionMessage,
     Attendance,
+    Fee,
 )
 
 from .serializers import (
@@ -43,6 +47,7 @@ from .serializers import (
     NotificationSerializer,
     DiscussionMessageSerializer,
     AttendanceSerializer, 
+    FeeSerializer, 
 )
 
 User = get_user_model()
@@ -66,6 +71,16 @@ def get_enrolled_ta_ids(user):
         student=user
     ).values_list("teaching_assignment_id", flat=True)
 
+
+# ===================== PARENTS DASHBOARD =====================
+def get_parent_children(user):
+    """Return the student Users linked to a parent (empty list if none)."""
+    from users.models import ParentProfile
+    try:
+        return list(ParentProfile.objects.get(user=user).children.all())
+    except ParentProfile.DoesNotExist:
+        return []
+    
 
 # ===================== ADMIN DASHBOARD =====================
 @api_view(['GET'])
@@ -275,15 +290,22 @@ class LectureViewSet(viewsets.ModelViewSet):
             lecture.teaching_assignment
         )
 
-       # ================= STUDENT NOTIFICATIONS =================
+# ================= STUDENT + PARENT NOTIFICATIONS =================
+        from .signals import notify_parents
         for e in students:
-
              Notification.objects.create(
                 recipient=e.student,
                 title="New Lecture Uploaded",
                 message=f"{lecture.title} has been uploaded",
                 notification_type='lecture',
                 teaching_assignment=lecture.teaching_assignment
+            )
+             notify_parents(
+                e.student,
+                "New Lecture for your child",
+                f"{lecture.title} has been uploaded",
+                'lecture',
+                lecture.teaching_assignment
             )
 
 # ================= TEACHER NOTIFICATION =================
@@ -319,10 +341,18 @@ class AssignmentViewSet(viewsets.ModelViewSet):
         elif user.role == "student":
             queryset = queryset.filter(
              teaching_assignment_id__in=get_enrolled_ta_ids(user)
-               )            
-
+               )
+        elif user.role == "parent":
+            children = get_parent_children(user)
+            child = self.request.query_params.get("child")
+            child_ids = [int(child)] if child else [c.id for c in children]
+            ta_ids = Enrollment.objects.filter(
+                student_id__in=child_ids
+            ).values_list("teaching_assignment_id", flat=True)
+            queryset = queryset.filter(teaching_assignment_id__in=ta_ids)
         else:
             return Assignment.objects.none()
+        
         ta = self.request.query_params.get(
             "teaching_assignment"
         )
@@ -349,8 +379,9 @@ class AssignmentViewSet(viewsets.ModelViewSet):
         )
 
         # ================= STUDENT NOTIFICATIONS =================
+        # (Parent notifications for new assignments are handled in signals.py,
+        #  so we do NOT call notify_parents here — that would double-notify.)
         for e in students:
-
             Notification.objects.create(
                 recipient=e.student,
                 title="New Assignment",
@@ -399,13 +430,16 @@ class SubmissionViewSet(viewsets.ModelViewSet):
             )
 
         elif user.role == "student":
-
             queryset = queryset.filter(
                 student=user
             )
-
+        elif user.role == "parent":
+            children = get_parent_children(user)
+            queryset = queryset.filter(student__in=children)
+            child = self.request.query_params.get("child")
+            if child:
+                queryset = queryset.filter(student_id=child)
         else:
-
             return Submission.objects.none()
 
         assignment = self.request.query_params.get(
@@ -550,6 +584,16 @@ class SubmissionViewSet(viewsets.ModelViewSet):
                 message=f"Marks have been published for {submission.assignment.title}.",
                 notification_type="assignment",
                 teaching_assignment=submission.assignment.teaching_assignment
+            )
+
+            # PARENT NOTIFICATION
+            from .signals import notify_parents
+            notify_parents(
+                submission.student,
+                "Marks Published for your child",
+                f"Marks published for {submission.assignment.title}.",
+                'marks',
+                submission.assignment.teaching_assignment
             )
         
 
@@ -810,13 +854,17 @@ class QuizAttemptViewSet(viewsets.ModelViewSet):
             )
 
         elif user.role == "student":
-
             queryset = queryset.filter(
                 student=user
             )
 
+        elif user.role == "parent":
+            children = get_parent_children(user)
+            queryset = queryset.filter(student__in=children)
+            child = self.request.query_params.get("child")
+            if child:
+                queryset = queryset.filter(student_id=child)
         else:
-
             return QuizAttempt.objects.none()
 
         quiz_id = self.request.query_params.get(
@@ -903,7 +951,8 @@ class StudyMaterialViewSet(viewsets.ModelViewSet):
             material.teaching_assignment
         )
 
-        # ================= STUDENT NOTIFICATIONS =================
+        # ================= STUDENT + PARENT NOTIFICATIONS =================
+        from .signals import notify_parents
         for e in students:
             Notification.objects.create(
                 recipient=e.student,
@@ -911,6 +960,13 @@ class StudyMaterialViewSet(viewsets.ModelViewSet):
                 message=f"{material.title} has been uploaded",
                 notification_type='material',
                 teaching_assignment=material.teaching_assignment
+            )
+            notify_parents(
+                e.student,
+                "New Study Material for your child",
+                f"{material.title} has been uploaded",
+                'material',
+                material.teaching_assignment
             )
 
         # ================= TEACHER NOTIFICATION =================
@@ -953,8 +1009,109 @@ class NotificationViewSet(viewsets.ModelViewSet):
         ).update(is_read=True)
         return Response({"message": "All notifications marked as read"})
     
+# ===================== FEE =====================
+class FeeViewSet(viewsets.ModelViewSet):
+    serializer_class = FeeSerializer
+    permission_classes = [IsAuthenticated]
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'admin':
+            return Fee.objects.all().select_related('student')
+        if user.role == 'parent':
+            from users.models import ParentProfile
+            try:
+                profile = ParentProfile.objects.get(user=user)
+                ids = profile.children.values_list('id', flat=True)
+                return Fee.objects.filter(student_id__in=ids)
+            except ParentProfile.DoesNotExist:
+                return Fee.objects.none()
+        if user.role == 'student':
+            return Fee.objects.filter(student=user)
+        return Fee.objects.none()
 
-    # ================= GENERATE ENROLLMENTS =================
+    @action(detail=True, methods=['post'])
+    def pay(self, request, pk=None):
+        fee = self.get_object()   # already scoped to the parent's children / student's own fees
+
+        if request.user.role not in ('parent', 'student'):
+            return Response({'detail': 'Only a parent or student can pay.'}, status=403)
+
+        try:
+            pay_amt = Decimal(str(request.data.get('amount')))
+        except (InvalidOperation, TypeError):
+            return Response({'detail': 'Enter a valid amount.'}, status=400)
+
+        if pay_amt <= 0:
+            return Response({'detail': 'Amount must be greater than zero.'}, status=400)
+
+        remaining = fee.amount - fee.paid_amount
+        if pay_amt > remaining:
+            return Response({'detail': f'You can pay at most ₹{remaining:.0f}.'}, status=400)
+
+        fee.paid_amount += pay_amt
+        if fee.paid_amount >= fee.amount:
+            fee.status = 'paid'
+            fee.paid_date = timezone.now().date()
+        else:
+            fee.status = 'partial'
+        fee.save()
+        return Response(FeeSerializer(fee).data)
+    
+    
+# ===================== PARENT DASHBOARD =====================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def parent_dashboard(request):
+    user = request.user
+    if user.role != 'parent':
+        return Response({'detail': 'Not a parent.'}, status=403)
+    from users.models import ParentProfile
+    try:
+        profile = ParentProfile.objects.prefetch_related(
+            'children').get(user=user)
+    except ParentProfile.DoesNotExist:
+        return Response({'detail': 'No profile.'}, status=404)
+    children = profile.children.all()
+    fees = Fee.objects.filter(student__in=children)
+    pending_fees = sum(
+        f.amount for f in fees if f.status == 'pending')
+    enrolled_ta_ids = Enrollment.objects.filter(
+        student__in=children
+    ).values_list('teaching_assignment_id', flat=True)
+    submitted_ids = Submission.objects.filter(
+        student__in=children
+    ).values_list('assignment_id', flat=True)
+    pending_assignments = Assignment.objects.filter(
+        teaching_assignment_id__in=enrolled_ta_ids
+    ).exclude(id__in=submitted_ids).count()
+    att_data = {}
+    for child in children:
+        recs = Attendance.objects.filter(student=child)
+        total = recs.count()
+        present = recs.filter(status='present').count()
+        att_data[child.username] = {
+            'total': total, 'present': present,
+            'percentage': round(present/total*100,1) if total else 0
+        }
+    avg = round(sum(v['percentage'] for v in att_data.values())
+                / len(att_data), 1) if att_data else 0
+    notifs = Notification.objects.filter(
+        recipient=user).order_by('-created_at')[:10]
+    return Response({
+        'children_enrolled': children.count(),
+        'pending_fees': float(pending_fees),
+        'avg_attendance': avg,
+        'pending_assignments': pending_assignments,
+        'attendance_per_child': att_data,
+        'children': [{'id': c.id, 'username': c.username} for c in children],
+        'recent_notifications': [
+            {'id':n.id,'title':n.title,'message':n.message,
+             'is_read':n.is_read,'created_at':n.created_at}
+            for n in notifs],
+    })
+
+
+# ================= GENERATE ENROLLMENTS =================
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_enrollments(request):
@@ -1016,6 +1173,256 @@ def generate_enrollments(request):
         },
         status=status.HTTP_200_OK
     )
+
+
+# ===================== PARENT MESSAGES =====================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def message_contacts(request):
+    """Who the current user can message."""
+    from .models import ParentMessage
+    user = request.user
+
+    if user.role == 'parent':
+        children = get_parent_children(user)
+        ta_ids = Enrollment.objects.filter(
+            student__in=children
+        ).values_list('teaching_assignment_id', flat=True)
+        teachers = User.objects.filter(
+            id__in=TeachingAssignment.objects.filter(
+                id__in=ta_ids
+            ).values_list('teacher_id', flat=True)
+        )
+        data = []
+        for t in teachers:
+            subjects = TeachingAssignment.objects.filter(
+                id__in=ta_ids, teacher=t
+            ).values_list('subject__name', flat=True)
+            data.append({
+                'id': t.id, 'username': t.username,
+                'subject': ', '.join(set(subjects)),
+            })
+        return Response(data)
+
+    if user.role == 'teacher':
+        ta_ids = TeachingAssignment.objects.filter(
+            teacher=user
+        ).values_list('id', flat=True)
+        student_ids = Enrollment.objects.filter(
+            teaching_assignment_id__in=ta_ids
+        ).values_list('student_id', flat=True)
+        from users.models import ParentProfile
+        parents = User.objects.filter(
+            id__in=ParentProfile.objects.filter(
+                children__id__in=student_ids
+            ).values_list('user_id', flat=True)
+        ).distinct()
+        return Response([{'id': p.id, 'username': p.username, 'subject': 'Parent'} for p in parents])
+
+    return Response([])
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def messages_with(request, user_id):
+    """GET = all messages between me and user_id. POST = send one."""
+    from .models import ParentMessage
+    from .serializers import ParentMessageSerializer
+    me = request.user
+
+    if request.method == 'GET':
+        msgs = ParentMessage.objects.filter(
+            sender_id__in=[me.id, user_id],
+            receiver_id__in=[me.id, user_id],
+        ).order_by('created_at')
+        ParentMessage.objects.filter(sender_id=user_id, receiver=me, is_read=False).update(is_read=True)
+        return Response(ParentMessageSerializer(msgs, many=True).data)
+
+    text = (request.data.get('text') or '').strip()
+    if not text:
+        return Response({'detail': 'Message cannot be empty.'}, status=400)
+    msg = ParentMessage.objects.create(sender=me, receiver_id=user_id, text=text)
+    Notification.objects.create(
+        recipient_id=user_id,
+        title="New message",
+        message=f"{me.username}: {text[:50]}",
+        notification_type='announcement',
+    )
+    return Response(ParentMessageSerializer(msg).data, status=201)
+
+
+# ===================== TEACHER BROADCAST TO PARENTS =====================
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def broadcast_to_parents(request):
+    if request.user.role != 'teacher':
+        return Response({'detail': 'Only teachers can broadcast.'}, status=403)
+
+    from .models import ParentMessage
+    from users.models import ParentProfile
+
+    ta_id = request.data.get('teaching_assignment')
+    text = (request.data.get('text') or '').strip()
+    if not ta_id or not text:
+        return Response({'detail': 'Subject and message are required.'}, status=400)
+
+    student_ids = Enrollment.objects.filter(
+        teaching_assignment_id=ta_id
+    ).values_list('student_id', flat=True)
+
+    parent_user_ids = ParentProfile.objects.filter(
+        children__id__in=student_ids
+    ).values_list('user_id', flat=True).distinct()
+
+    count = 0
+    for pid in parent_user_ids:
+        ParentMessage.objects.create(sender=request.user, receiver_id=pid, text=text)
+        Notification.objects.create(
+            recipient_id=pid,
+            title="Message from teacher",
+            message=f"{request.user.username}: {text[:60]}",
+            notification_type='announcement',
+        )
+        count += 1
+
+    return Response({'message': f'Sent to {count} parent(s).'})
+
+# ===================== CHAT: CONTACTS =====================
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def chat_contacts(request):
+    from .models import ConversationMessage
+    from users.models import ParentProfile
+    user = request.user
+
+    if user.role == 'parent':
+        children = get_parent_children(user)
+        ta_ids = Enrollment.objects.filter(
+            student__in=children
+        ).values_list('teaching_assignment_id', flat=True)
+        teacher_ids = TeachingAssignment.objects.filter(
+            id__in=ta_ids
+        ).values_list('teacher_id', flat=True)
+        teachers = User.objects.filter(id__in=teacher_ids).distinct()
+        data = []
+        for t in teachers:
+            subjects = TeachingAssignment.objects.filter(
+                id__in=ta_ids, teacher=t
+            ).values_list('subject__name', flat=True)
+            data.append({'id': t.id, 'username': t.username,
+                         'subject': ', '.join(set(subjects))})
+        return Response(data)
+
+    if user.role == 'teacher':
+        ta_ids = TeachingAssignment.objects.filter(
+            teacher=user
+        ).values_list('id', flat=True)
+        student_ids = Enrollment.objects.filter(
+            teaching_assignment_id__in=ta_ids
+        ).values_list('student_id', flat=True)
+        parent_ids = ParentProfile.objects.filter(
+            children__id__in=student_ids
+        ).values_list('user_id', flat=True).distinct()
+        parents = User.objects.filter(id__in=parent_ids)
+        return Response([{'id': p.id, 'username': p.username, 'subject': 'Parent'}
+                         for p in parents])
+
+    return Response([])
+
+
+# ===================== CHAT: MESSAGES =====================
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def chat_with(request, user_id):
+    from .models import ConversationMessage
+    from .serializers import ConversationMessageSerializer
+    me = request.user
+
+    if request.method == 'GET':
+        msgs = ConversationMessage.objects.filter(
+            sender_id__in=[me.id, user_id],
+            receiver_id__in=[me.id, user_id],
+        ).order_by('created_at')
+        ConversationMessage.objects.filter(
+            sender_id=user_id, receiver=me, is_read=False
+        ).update(is_read=True)
+        return Response(ConversationMessageSerializer(msgs, many=True).data)
+
+    text = (request.data.get('text') or '').strip()
+    if not text:
+        return Response({'detail': 'Message cannot be empty.'}, status=400)
+    msg = ConversationMessage.objects.create(
+        sender=me, receiver_id=user_id, text=text)
+    Notification.objects.create(
+        recipient_id=user_id,
+        title="New message",
+        message=f"{me.username}: {text[:50]}",
+        notification_type='announcement',
+    )
+    return Response(ConversationMessageSerializer(msg).data, status=201)
+
+
+# ===================== MANAGE PARENTS (ADMIN) =====================
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def manage_parents(request):
+    if request.user.role != 'admin':
+        return Response({'detail': 'Only admin can manage parents.'}, status=403)
+
+    from users.models import ParentProfile
+
+    if request.method == 'GET':
+        parents = []
+        for p in ParentProfile.objects.select_related('user').prefetch_related('children'):
+            parents.append({
+                'profile_id': p.id,
+                'username': p.user.username,
+                'children': [{'id': c.id, 'username': c.username} for c in p.children.all()],
+            })
+        students = list(
+            User.objects.filter(role='student')
+            .order_by('course__name', 'username')
+            .values('id', 'username', course_name=models.F('course__name'))
+        )
+        return Response({'parents': parents, 'students': students})
+
+    username = (request.data.get('username') or '').strip()
+    password = request.data.get('password') or ''
+    child_ids = request.data.get('children', [])
+
+    if not username or not password:
+        return Response({'detail': 'Username and password are required.'}, status=400)
+    if User.objects.filter(username=username).exists():
+        return Response({'detail': 'That username already exists.'}, status=400)
+
+    parent = User(username=username, role='parent')
+    parent.set_password(password)
+    parent.save()
+
+    profile = ParentProfile.objects.create(user=parent)
+    if child_ids:
+        profile.children.set(User.objects.filter(id__in=child_ids, role='student'))
+
+    return Response({'message': 'Parent created successfully.', 'profile_id': profile.id}, status=201)
+
+
+# ===================== UPDATE A PARENT'S CHILDREN (ADMIN) =====================
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_parent_children(request, profile_id):
+    if request.user.role != 'admin':
+        return Response({'detail': 'Only admin can manage parents.'}, status=403)
+
+    from users.models import ParentProfile
+    try:
+        profile = ParentProfile.objects.get(id=profile_id)
+    except ParentProfile.DoesNotExist:
+        return Response({'detail': 'Parent profile not found.'}, status=404)
+
+    child_ids = request.data.get('children', [])
+    profile.children.set(User.objects.filter(id__in=child_ids, role='student'))
+    return Response({'message': 'Children updated.'})
+
 
 # ===================== DISCUSSION MESSAGE =====================
 class DiscussionMessageViewSet(viewsets.ModelViewSet):
@@ -1120,6 +1527,12 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             )
         elif user.role == 'student':
             queryset = queryset.filter(student=user)
+        elif user.role == 'parent':
+            children = get_parent_children(user)
+            queryset = queryset.filter(student__in=children)
+            child = self.request.query_params.get('child')
+            if child:
+                queryset = queryset.filter(student_id=child)
         else:
             return Attendance.objects.none()
 
@@ -1166,6 +1579,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        from .signals import notify_parents
         saved = []
         for record in records:
             student_id = record.get('student')
@@ -1191,6 +1605,31 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 }
             )
             saved.append(obj.id)
+
+           # ── notify parent on absence / duty leave ──
+            if attendance_status in ('absent', 'duty_leave'):
+                child = User.objects.get(id=student_id)
+
+                if attendance_status == 'duty_leave':
+                    notify_parents(
+                        child, "Marked on duty leave",
+                        f"{child.username} was marked on duty leave in {ta.subject.name} (Hour {hour}).",
+                        'announcement', ta)
+                else:
+                    recs = Attendance.objects.filter(student_id=student_id)
+                    total = recs.count()
+                    present = recs.filter(status='present').count()
+                    pct = round(present / total * 100) if total else 0
+                    if pct < 75:
+                        notify_parents(
+                            child, "Low attendance warning",
+                            f"{child.username} attendance is {pct}% in {ta.subject.name} (Hour {hour}).",
+                            'announcement', ta)
+                    else:
+                        notify_parents(
+                            child, "Marked absent",
+                            f"{child.username} was marked absent in {ta.subject.name} (Hour {hour}).",
+                            'announcement', ta)
 
         return Response(
             {'message': f'{len(saved)} attendance records saved.', 'ids': saved},

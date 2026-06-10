@@ -107,6 +107,11 @@ function Navbar({ setOpen }) {
       bg: "#dcfce7",
       color: "#166534"
     },
+
+    parent: {
+      bg: "#fef3c7",
+      color: "#92400e"
+    },
   };
 
   const rc =

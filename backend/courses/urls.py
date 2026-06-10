@@ -6,6 +6,7 @@ from .views import (
     # DASHBOARDS
     teacher_dashboard,
     admin_dashboard,
+    parent_dashboard,
 
     # GENERATE ENROLLMENTS
     generate_enrollments,
@@ -16,6 +17,7 @@ from .views import (
     SubjectViewSet,
     TeachingAssignmentViewSet,
     EnrollmentViewSet,
+     FeeViewSet,
 
     # LECTURES
     LectureViewSet,
@@ -39,7 +41,15 @@ from .views import (
     NotificationViewSet,
 
     #ATTENDANCE
-     AttendanceViewSet,
+    AttendanceViewSet,
+
+    #PARENTS
+    manage_parents,
+    update_parent_children,
+    message_contacts,
+    messages_with,
+    chat_contacts,
+    chat_with,
 )
 
 router = DefaultRouter()
@@ -143,6 +153,13 @@ router.register(
     basename='attendance'
 )
 
+# ================= FEES =================
+router.register(
+    r'fees', 
+    FeeViewSet, 
+    basename='fee'
+)
+
 urlpatterns = [
 
     # ================= DASHBOARDS =================
@@ -162,11 +179,26 @@ urlpatterns = [
         generate_enrollments
     ),
 
+    # ================= FEES =================
+    path(
+        'parent/dashboard/', 
+        parent_dashboard
+    ),
+
+
+    # =================PARENTS=========================
+    path('manage/parents/', manage_parents),
+    path('manage/parents/<int:profile_id>/children/', update_parent_children),
+    path('messages/contacts/', message_contacts),
+    path('messages/with/<int:user_id>/', messages_with),
+    path('chat/contacts/', chat_contacts),
+    path('chat/with/<int:user_id>/', chat_with),
+
+
     # ================= API ROUTES =================
     path(
         '',
         include(router.urls)
     ),
 ]
-
 

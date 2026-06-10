@@ -670,3 +670,66 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.date} Hour {self.hour} - {self.status}"
+    
+# ===================== FEE =====================
+class Fee(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('partial', 'Partial'),
+        ('paid', 'Paid'),
+    ]
+    student = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='fees',
+        limit_choices_to={'role': 'student'}
+    )
+    term = models.CharField(max_length=50)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    paid_amount = models.DecimalField(         
+        max_digits=10, decimal_places=2, default=0)
+    due_date = models.DateField()
+    paid_date = models.DateField(null=True, blank=True)
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default='pending'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.student.username} – {self.term}"
+    
+
+# ===================== PARENT MESSAGE =====================
+class ParentMessage(models.Model):
+    sender = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='sent_messages'
+    )
+    receiver = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='received_messages'
+    )
+    text = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.sender.username} → {self.receiver.username}"
+    
+# ===================== CONVERSATION MESSAGE =====================
+class ConversationMessage(models.Model):
+    sender = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='sent_convo_messages'
+    )
+    receiver = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='received_convo_messages'
+    )
+    text = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.sender.username} -> {self.receiver.username}"

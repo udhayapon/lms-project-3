@@ -51,6 +51,9 @@ function Login() {
       else if (role === "student") {
         navigate("/student");     // STUDENT
       } 
+      else if (role === "parent") {
+        navigate("/parent");      // PARENT
+      } 
       else {
         console.log("Unknown role:", data);
         setError("Invalid role");
@@ -201,6 +204,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
   },
+  
   blobTopLeft: {
     position: "absolute",
     top: -60,
