@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
 import Sidebar from "../../components/Sidebar";
 import API from "../../api";
 
 export default function ParentChat() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [active, setActive] = useState(null);
@@ -36,8 +38,8 @@ export default function ParentChat() {
   useEffect(() => {
     if (!active) return;
     fetchMessages(active.id);
-    const t = setInterval(() => fetchMessages(active.id), 5000);
-    return () => clearInterval(t);
+    const tmr = setInterval(() => fetchMessages(active.id), 5000);
+    return () => clearInterval(tmr);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
@@ -71,22 +73,22 @@ export default function ParentChat() {
 
               {/* Header */}
               <div style={{ marginBottom: 24 }}>
-                <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0 }}>Messages</h1>
-                <p style={{ color: "#64748b", fontSize: 15, marginTop: 4 }}>Communicate with teachers directly</p>
+                <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0 }}>{t("messages")}</h1>
+                <p style={{ color: "#64748b", fontSize: 15, marginTop: 4 }}>{t("communicate_teachers")}</p>
               </div>
 
               {loading ? (
-                <div style={{ padding: 60, textAlign: "center", color: "#64748b" }}>Loading…</div>
+                <div style={{ padding: 60, textAlign: "center", color: "#64748b" }}>{t("loading")}</div>
               ) : contacts.length === 0 ? (
                 <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 60, textAlign: "center", color: "#64748b" }}>
-                  No teachers found yet for your children.
+                  {t("no_teachers_found")}
                 </div>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 380px) minmax(0, 1fr)", gap: 20, height: "calc(100vh - 220px)", alignItems: "stretch" }}>
 
                   {/* Contacts */}
                   <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 24, height: "100%", overflowY: "auto" }}>
-                    <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 18, color: "#0f172a" }}>Conversations</h3>
+                    <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 18, color: "#0f172a" }}>{t("conversations")}</h3>
                     {contacts.map((c) => (
                       <div
                         key={c.id}
@@ -118,19 +120,19 @@ export default function ParentChat() {
                   {/* Chat */}
                  <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 24, height: "100%", display: "flex", flexDirection: "column" }}>
                     <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, color: "#0f172a", borderBottom: "1px solid #f1f5f9", paddingBottom: 16 }}>
-                      {active ? `${active.username} — ${active.subject}` : "Select a teacher"}
+                      {active ? `${active.username} — ${active.subject}` : t("select_teacher")}
                     </h3>
 
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", paddingRight: 6, marginBottom: 16 }}>
                       {messages.length === 0 ? (
-                        <div style={{ color: "#94a3b8", fontSize: 14, textAlign: "center", marginTop: "auto", marginBottom: "auto" }}>No messages yet. Say hello.</div>
+                        <div style={{ color: "#94a3b8", fontSize: 14, textAlign: "center", marginTop: "auto", marginBottom: "auto" }}>{t("no_messages_yet")}</div>
                       ) : (
                         messages.map((m) => {
                           const mine = m.sender === user.id || m.sender_name === user.username;
                           return (
                             <div key={m.id} style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "75%" }}>
                               <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 5, textAlign: mine ? "right" : "left" }}>
-                                {mine ? "You" : m.sender_name} · {fmt(m.created_at)}
+                                {mine ? t("you") : m.sender_name} · {fmt(m.created_at)}
                               </div>
                               <div style={{
                                 padding: "12px 16px", borderRadius: 14, fontSize: 14, lineHeight: 1.55,
@@ -151,7 +153,7 @@ export default function ParentChat() {
                         <input
                           type="text"
                           value={text}
-                          placeholder="Type a message…"
+                          placeholder={t("type_message")}
                           onChange={(e) => setText(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && send()}
                           style={{ flex: 1, border: "1px solid #e2e8f0", borderRadius: 12, padding: "13px 16px", fontSize: 14, background: "#f8fafc", outline: "none" }}
@@ -160,7 +162,7 @@ export default function ParentChat() {
                           onClick={send}
                           style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 12, padding: "0 28px", fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                         >
-                          Send
+                          {t("send")}
                         </button>
                       </div>
                     )}

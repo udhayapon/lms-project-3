@@ -31,6 +31,8 @@ import Enrollments from "./pages/Admin/Enrollments";
 import Departments from "./pages/Admin/Departments";
 import AdminFees from "./features/fees/AdminFees";
 
+import Calendar from "./features/calendar/Calendar";
+
 // ===== TEACHER =====
 import TeacherHome from "./pages/Teacher/TeacherHome";
 import SubjectDetails from "./pages/Teacher/SubjectDetails";
@@ -315,6 +317,17 @@ function App() {
               </ProtectedRoute>
             }
         />
+
+
+        {/* ======================== CALENDAR==================== */}
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute>
+              <Calendar />
+              </ProtectedRoute>
+            }
+          />
 
 
         {/* ================= YEARS ================= */}

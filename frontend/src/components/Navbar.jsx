@@ -7,6 +7,8 @@ import {
   useNavigate
 } from "react-router-dom";
 
+import { useTranslation } from "react-i18next";
+
 import API from "../api";
 
 function Navbar({ setOpen }) {
@@ -14,6 +16,20 @@ function Navbar({ setOpen }) {
   const user = JSON.parse(
     localStorage.getItem("user") || "{}"
   );
+
+  const { i18n } = useTranslation();
+
+  const changeLang = (lng) => {
+    i18n.changeLanguage(lng);
+    localStorage.setItem("lang", lng);
+  };
+
+  // Non-parents always see English (no toggle for them)
+  useEffect(() => {
+    if (user.role !== "parent" && i18n.language !== "en") {
+      i18n.changeLanguage("en");
+    }
+  }, []);
 
   const navigate = useNavigate();
 
@@ -160,6 +176,32 @@ function Navbar({ setOpen }) {
       {/* ================= RIGHT ================= */}
       <div style={styles.right}>
 
+      
+      {/* ===== LANGUAGE TOGGLE (parents only) ===== */}
+        {user.role === "parent" && (
+          <div style={{ display: "inline-flex", border: "1px solid #cbd5e1", borderRadius: 8, overflow: "hidden", marginRight: 12 }}>
+            <span
+              onClick={() => changeLang("en")}
+              style={{
+                padding: "5px 12px", fontSize: 12, cursor: "pointer",
+                background: i18n.language === "en" ? "#2563eb" : "transparent",
+                color: i18n.language === "en" ? "#fff" : "#64748b",
+              }}
+            >
+              EN
+            </span>
+            <span
+              onClick={() => changeLang("ta")}
+              style={{
+                padding: "5px 12px", fontSize: 12, cursor: "pointer",
+                background: i18n.language === "ta" ? "#2563eb" : "transparent",
+                color: i18n.language === "ta" ? "#fff" : "#64748b",
+              }}
+            >
+              தமிழ்
+            </span>
+          </div>
+        )}
         {/* ================= NOTIFICATION ================= */}
         <div style={{ position: "relative",}} >
 

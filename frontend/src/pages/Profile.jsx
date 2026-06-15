@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
@@ -10,6 +11,8 @@ export default function Profile() {
   const user = JSON.parse(
     localStorage.getItem("user") || "{}"
   );
+
+  const { t } = useTranslation();
 
   // ================= STATES =================
   const [open, setOpen] =
@@ -125,11 +128,11 @@ export default function Profile() {
             >
 
               <h1>
-                My Profile
+                {t("my_profile")}
               </h1>
 
               <p>
-                View your account details
+                {t("view_account_details")}
               </p>
 
             </div>
@@ -243,7 +246,7 @@ export default function Profile() {
                   marginBottom: "20px",
                 }}
               >
-                Account Information
+                {t("account_information")}
               </h2>
 
               <div
@@ -260,7 +263,7 @@ export default function Profile() {
                 <div>
 
                   <h4>
-                    Username
+                    {t("username")}
                   </h4>
 
                   <p>
@@ -273,7 +276,7 @@ export default function Profile() {
                 <div>
 
                   <h4>
-                    Email
+                    {t("email")}
                   </h4>
 
                   <p>
@@ -286,7 +289,7 @@ export default function Profile() {
                 <div>
 
                   <h4>
-                    Role
+                    {t("role")}
                   </h4>
 
                   <p
@@ -309,9 +312,9 @@ export default function Profile() {
 
                     {user?.role === "student"
 
-                      ? "Roll Number"
+                      ? t("roll_number")
 
-                      : "Employee ID"}
+                      : t("employee_id")}
 
                   </h4>
 
@@ -331,7 +334,7 @@ export default function Profile() {
                 <div>
 
                   <h4>
-                    Department
+                    {t("department")}
                   </h4>
 
                   <p>
@@ -349,7 +352,7 @@ export default function Profile() {
                   <div>
 
                     <h4>
-                      Course
+                      {t("course")}
                     </h4>
 
                     <p>

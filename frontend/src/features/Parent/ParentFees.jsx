@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
 import Sidebar from "../../components/Sidebar";
 import API from "../../api";
 import "./ParentModule.css";
 
 export default function ParentFees() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [children, setChildren] = useState([]);
   const [activeChild, setActiveChild] = useState(null);
@@ -38,8 +40,8 @@ export default function ParentFees() {
 
   useEffect(() => {
     fetchData();
-    const t = setInterval(fetchData, 15000);
-    return () => clearInterval(t);
+    const tmr = setInterval(fetchData, 15000);
+    return () => clearInterval(tmr);
   }, []);
 
   // filter by selected child (client-side; Fee has student + student_name)
@@ -69,10 +71,10 @@ export default function ParentFees() {
   // ── status badge (now handles "partial") ──
   const statusBadge = (f) => {
     if (f.status === "paid")
-      return <span className="pm-badge green">Paid</span>;
+      return <span className="pm-badge green">{t("paid")}</span>;
     if (f.status === "partial")
-      return <span className="pm-badge" style={{ background: "#fef3c7", color: "#92400e" }}>Partial</span>;
-    return <span className="pm-badge red">Pending</span>;
+      return <span className="pm-badge" style={{ background: "#fef3c7", color: "#92400e" }}>{t("partial")}</span>;
+    return <span className="pm-badge red">{t("pending")}</span>;
   };
 
   // ── open / submit payment ──
@@ -85,8 +87,8 @@ export default function ParentFees() {
   const submitPay = async () => {
     const amt = Number(payAmount);
     const remaining = pendingVal(payFee);
-    if (!amt || amt <= 0) { setPayError("Enter an amount greater than 0."); return; }
-    if (amt > remaining)  { setPayError(`You can pay at most ${money(remaining)}.`); return; }
+    if (!amt || amt <= 0) { setPayError(t("enter_amount_gt_zero")); return; }
+    if (amt > remaining)  { setPayError(`${t("remaining")}: ${money(remaining)}.`); return; }
     try {
       setPaying(true);
       setPayError("");
@@ -94,7 +96,7 @@ export default function ParentFees() {
       setPayFee(null);
       await fetchData();
     } catch (err) {
-      setPayError(err.response?.data?.detail || "Payment failed. Try again.");
+      setPayError(err.response?.data?.detail || t("payment_failed"));
     } finally {
       setPaying(false);
     }
@@ -110,8 +112,8 @@ export default function ParentFees() {
             <div className="pm-page">
 
               <div className="pm-header">
-                <h1>Fee Details</h1>
-                <p>Payment history and pending dues</p>
+                <h1>{t("fee_details")}</h1>
+                <p>{t("payment_history_dues")}</p>
               </div>
 
               <div className="pm-tabs">
@@ -119,7 +121,7 @@ export default function ParentFees() {
                   className={`pm-tab ${activeChild === null ? "active" : ""}`}
                   onClick={() => setActiveChild(null)}
                 >
-                  All Children
+                  {t("all_children")}
                 </div>
                 {children.map((c) => (
                   <div
@@ -133,41 +135,41 @@ export default function ParentFees() {
               </div>
 
               {loading ? (
-                <div className="pm-loading">Loading fees…</div>
+                <div className="pm-loading">{t("loading_fees")}</div>
               ) : (
                 <div className="pm-two-col">
                   {/* ── Summary ── */}
                   <div className="pm-card">
-                    <div className="pm-card-title">Fee Summary</div>
+                    <div className="pm-card-title">{t("fee_summary")}</div>
                     <div className="pm-fee-row">
-                      <span className="pm-fee-label">Total fees</span>
+                      <span className="pm-fee-label">{t("total_fees")}</span>
                       <span className="pm-fee-val">{money(totalFees)}</span>
                     </div>
                     <div className="pm-fee-row">
-                      <span className="pm-fee-label">Paid</span>
+                      <span className="pm-fee-label">{t("paid")}</span>
                       <span className="pm-fee-val green">{money(paid)}</span>
                     </div>
                     <div className="pm-fee-row">
-                      <span className="pm-fee-label">Pending</span>
+                      <span className="pm-fee-label">{t("pending")}</span>
                       <span className="pm-fee-val red">{money(pending)}</span>
                     </div>
                     <div className="pm-fee-row">
-                      <span className="pm-fee-label">Next due date</span>
+                      <span className="pm-fee-label">{t("next_due_date")}</span>
                       <span className="pm-fee-val">{fmtDate(nextDue?.due_date)}</span>
                     </div>
                   </div>
 
                   {/* ── History ── */}
                   <div className="pm-card">
-                    <div className="pm-card-title">Payment History</div>
+                    <div className="pm-card-title">{t("payment_history")}</div>
                     {visible.length === 0 ? (
-                      <div className="pm-empty">No fee records</div>
+                      <div className="pm-empty">{t("no_fee_records")}</div>
                     ) : (
                       <table className="pm-table">
                         <thead>
                           <tr>
-                            <th>Child</th><th>Term</th><th>Total</th>
-                            <th>Paid</th><th>Pending</th><th>Status</th><th></th>
+                            <th>{t("child")}</th><th>{t("term")}</th><th>{t("total")}</th>
+                            <th>{t("paid")}</th><th>{t("pending")}</th><th>{t("status")}</th><th></th>
                           </tr>
                         </thead>
                         <tbody>
@@ -189,7 +191,7 @@ export default function ParentFees() {
                                       fontWeight: 600, cursor: "pointer",
                                     }}
                                   >
-                                    Pay
+                                    {t("pay")}
                                   </button>
                                 )}
                               </td>
@@ -218,23 +220,23 @@ export default function ParentFees() {
         >
           <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 380, padding: 22 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>
-              Pay Fee
+              {t("pay_fee")}
             </div>
             <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
               {payFee.student_name} · {payFee.term}
             </div>
 
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
-              <span style={{ color: "#64748b" }}>Total</span>
+              <span style={{ color: "#64748b" }}>{t("total")}</span>
               <span style={{ fontWeight: 600 }}>{money(payFee.amount)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 16 }}>
-              <span style={{ color: "#64748b" }}>Remaining</span>
+              <span style={{ color: "#64748b" }}>{t("remaining")}</span>
               <span style={{ fontWeight: 700, color: "#b91c1c" }}>{money(pendingVal(payFee))}</span>
             </div>
 
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 5 }}>
-              Amount to pay (₹)
+              {t("amount_to_pay")}
             </label>
             <input
               type="number"
@@ -259,7 +261,7 @@ export default function ParentFees() {
                   background: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#374151",
                 }}
               >
-                Cancel
+                {t("cancel")}
               </button>
               <button
                 onClick={submitPay}
@@ -270,7 +272,7 @@ export default function ParentFees() {
                   cursor: paying ? "default" : "pointer", opacity: paying ? 0.7 : 1,
                 }}
               >
-                {paying ? "Paying…" : "Pay Now"}
+                {paying ? t("paying") : t("pay_now")}
               </button>
             </div>
           </div>

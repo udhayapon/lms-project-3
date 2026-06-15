@@ -7,6 +7,10 @@ import {
   useState
 } from "react";
 
+import { 
+  useTranslation 
+} from "react-i18next";
+
 export default function Sidebar({
   open,
   setOpen
@@ -21,6 +25,8 @@ export default function Sidebar({
   const user = JSON.parse(
     localStorage.getItem("user") || "{}"
   );
+
+  const { t } = useTranslation();
 
   // ================= USERS DROPDOWN =================
   const [usersOpen, setUsersOpen] =
@@ -92,6 +98,10 @@ export default function Sidebar({
         path: "/admin/fees"  
       },
 
+      { name: "Academic Calendar",
+         path: "/calendar" 
+      },
+
       {
         name: "Profile",
         path: "/profile"
@@ -128,6 +138,10 @@ export default function Sidebar({
       {
         name: "Notifications",
         path: "/notifications"
+      },
+
+      { name: "Academic Calendar", 
+        path: "/calendar" 
       },
 
       {
@@ -172,6 +186,11 @@ export default function Sidebar({
         path: "/notifications"
       },
 
+      { name: "Academic Calendar", 
+        path: "/calendar" 
+      },
+
+
       {
         name: "Profile",
         path: "/profile"
@@ -182,14 +201,15 @@ export default function Sidebar({
   // ================= PARENT =================
   else if (user.role === "parent") {
     menu = [
-      { name: "Dashboard", path: "/parent" },
-      { name: "Grades", path: "/parent/grades" },
-      { name: "Attendance", path: "/parent/attendance" },
-      { name: "Assignments", path: "/parent/assignments" },
-      { name: "Fees", path: "/parent/fees" },
-      { name: "Messages", path: "/parent/chat" },
-      { name: "Notifications", path: "/notifications" },
-      { name: "Profile", path: "/profile" },
+      { name: t("dashboard"), path: "/parent" },
+      { name: t("grades"), path: "/parent/grades" },
+      { name: t("attendance"), path: "/parent/attendance" },
+      { name: t("assignments"), path: "/parent/assignments" },
+      { name: t("fees"), path: "/parent/fees" },
+      { name: t("messages"), path: "/parent/chat" },
+      { name: t("notifications"), path: "/notifications" },
+      { name: t("academic_calendar"), path: "/calendar" },
+      { name: t("profile"), path: "/profile" },
     ];
   }
 

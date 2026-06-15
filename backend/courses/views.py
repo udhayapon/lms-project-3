@@ -29,6 +29,7 @@ from .models import (
     DiscussionMessage,
     Attendance,
     Fee,
+    CalendarEvent,
 )
 
 from .serializers import (
@@ -48,6 +49,7 @@ from .serializers import (
     DiscussionMessageSerializer,
     AttendanceSerializer, 
     FeeSerializer, 
+    CalendarEventSerializer,
 )
 
 User = get_user_model()
@@ -1635,3 +1637,94 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             {'message': f'{len(saved)} attendance records saved.', 'ids': saved},
             status=status.HTTP_200_OK
         )
+
+
+#=================== helpers for the calendar================
+def get_student_year(user):
+    en = Enrollment.objects.filter(student=user).first()
+    if en:
+        return en.teaching_assignment.year.year_number
+    return None
+
+
+def get_parent_child_years(user):
+    years = []
+    for child in get_parent_children(user):
+        y = get_student_year(child)
+        if y is not None:
+            years.append(y)
+    return years
+
+
+def notify_calendar_audience(event):
+    User = get_user_model()
+    date_text = event.start_date.strftime("%d %b %Y")
+    title = f"{event.get_event_type_display()}: {event.title}"
+    message = f"{event.title} on {date_text}"
+
+    if event.audience == 'everyone':
+        recipients = User.objects.all()
+    elif event.audience == 'teachers':
+        recipients = User.objects.filter(role='teacher')
+    elif event.audience == 'students':
+        recipients = User.objects.filter(role='student')
+        if event.year_number:
+            ids = [s.id for s in recipients if get_student_year(s) == event.year_number]
+            recipients = User.objects.filter(id__in=ids)
+    elif event.audience == 'parents':
+        recipients = User.objects.filter(role='parent')
+        if event.year_number:
+            ids = [p.id for p in recipients if event.year_number in get_parent_child_years(p)]
+            recipients = User.objects.filter(id__in=ids)
+    else:
+        recipients = User.objects.none()
+
+    for u in recipients:
+        Notification.objects.create(
+            recipient=u, title=title, message=message,
+            notification_type='announcement',
+        )
+
+
+# ===================== CALENDAR =====================
+class CalendarEventViewSet(viewsets.ModelViewSet):
+    serializer_class = CalendarEventSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'admin':
+            return CalendarEvent.objects.all().order_by('start_date')
+
+        qs = CalendarEvent.objects.filter(audience='everyone')
+
+        if user.role == 'teacher':
+            qs = qs | CalendarEvent.objects.filter(audience='teachers')
+        elif user.role == 'student':
+            se = CalendarEvent.objects.filter(audience='students').filter(
+                models.Q(year_number__isnull=True) | models.Q(year_number=get_student_year(user))
+            )
+            qs = qs | se
+        elif user.role == 'parent':
+            pe = CalendarEvent.objects.filter(audience='parents').filter(
+                models.Q(year_number__isnull=True) | models.Q(year_number__in=get_parent_child_years(user))
+            )
+            qs = qs | pe
+
+        return qs.distinct().order_by('start_date')
+
+    def perform_create(self, serializer):
+        if self.request.user.role != 'admin':
+            raise ValidationError("Only admin can add calendar events.")
+        event = serializer.save(created_by=self.request.user)
+        notify_calendar_audience(event)
+
+    def perform_update(self, serializer):
+        if self.request.user.role != 'admin':
+            raise ValidationError("Only admin can edit calendar events.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if self.request.user.role != 'admin':
+            raise ValidationError("Only admin can delete calendar events.")
+        instance.delete()

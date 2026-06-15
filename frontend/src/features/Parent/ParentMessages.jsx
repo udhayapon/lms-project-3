@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
 import Sidebar from "../../components/Sidebar";
 import API from "../../api";
@@ -6,6 +7,7 @@ import "./ParentModule.css";
 
 export default function ParentMessages() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   const [contacts, setContacts] = useState([]);
@@ -38,8 +40,8 @@ export default function ParentMessages() {
   useEffect(() => {
     if (!active) return;
     fetchMessages(active.id);
-    const t = setInterval(() => fetchMessages(active.id), 5000);
-    return () => clearInterval(t);
+    const tmr = setInterval(() => fetchMessages(active.id), 5000);
+    return () => clearInterval(tmr);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
@@ -72,22 +74,22 @@ export default function ParentMessages() {
             <div className="pm-page">
 
               <div className="pm-header">
-                <h1>Messages</h1>
-                <p>Communicate with your children's teachers</p>
+                <h1>{t("messages")}</h1>
+                <p>{t("communicate_childrens_teachers")}</p>
               </div>
 
               {loading ? (
-                <div className="pm-loading">Loading…</div>
+                <div className="pm-loading">{t("loading")}</div>
               ) : contacts.length === 0 ? (
                 <div className="pm-card">
                   <div className="pm-empty">
-                    No teachers found. Teachers appear here once your child is enrolled in their subjects.
+                    {t("no_teachers_found_long")}
                   </div>
                 </div>
               ) : (
                 <div className="pm-two-col">
                   <div className="pm-card">
-                    <div className="pm-card-title">Conversations</div>
+                    <div className="pm-card-title">{t("conversations")}</div>
                     {contacts.map((c) => (
                       <div
                         key={c.id}
@@ -115,19 +117,19 @@ export default function ParentMessages() {
 
                   <div className="pm-card">
                     <div className="pm-card-title">
-                      {active ? `${active.username} — ${active.subject}` : "Select a conversation"}
+                      {active ? `${active.username} — ${active.subject}` : t("select_conversation")}
                     </div>
 
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px", minHeight: 220, maxHeight: 360, overflowY: "auto", paddingRight: 4 }}>
                       {messages.length === 0 ? (
-                        <div className="pm-empty">No messages yet. Say hello!</div>
+                        <div className="pm-empty">{t("no_messages_yet")}</div>
                       ) : (
                         messages.map((m) => {
                           const mine = (m.sender === user.id) || (m.sender_name === user.username);
                           return (
                             <div key={m.id} style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "80%" }}>
                               <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 3, textAlign: mine ? "right" : "left" }}>
-                                {mine ? "You" : m.sender_name} · {fmt(m.created_at)}
+                                {mine ? t("you") : m.sender_name} · {fmt(m.created_at)}
                               </div>
                               <div style={{
                                 padding: "9px 13px", borderRadius: 10, fontSize: 13, lineHeight: 1.5,
@@ -148,13 +150,13 @@ export default function ParentMessages() {
                         <input
                           type="text"
                           value={text}
-                          placeholder="Type a message…"
+                          placeholder={t("type_message")}
                           onChange={(e) => setText(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && send()}
                           style={{ flex: 1, border: "1px solid #e2e8f0", borderRadius: 10, padding: "9px 14px", fontSize: 13, background: "#f8fafc", outline: "none" }}
                         />
                         <button className="btn-primary" style={{ background: "#2563eb", color: "#fff" }} onClick={send}>
-                          Send
+                          {t("send")}
                         </button>
                       </div>
                     )}

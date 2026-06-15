@@ -17,7 +17,7 @@ from .views import (
     SubjectViewSet,
     TeachingAssignmentViewSet,
     EnrollmentViewSet,
-     FeeViewSet,
+    FeeViewSet,
 
     # LECTURES
     LectureViewSet,
@@ -42,6 +42,9 @@ from .views import (
 
     #ATTENDANCE
     AttendanceViewSet,
+
+    #CALENDAR
+    CalendarEventViewSet,
 
     #PARENTS
     manage_parents,
@@ -158,6 +161,14 @@ router.register(
     r'fees', 
     FeeViewSet, 
     basename='fee'
+)
+
+
+#==================CALENDAR====================
+router.register(
+    r'calendar', 
+    CalendarEventViewSet, 
+    basename='calendar'
 )
 
 urlpatterns = [

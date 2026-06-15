@@ -574,3 +574,18 @@ class ConversationMessageSerializer(serializers.ModelSerializer):
                   'receiver_name', 'text', 'is_read', 'created_at']
         read_only_fields = ['sender', 'created_at']
         
+
+# ===================== CALENDAR EVENT =====================
+class CalendarEventSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.username', read_only=True)
+
+    class Meta:
+        model = CalendarEvent
+        fields = [
+            'id', 'title', 'event_type', 'audience', 'year_number',
+            'start_date', 'end_date', 'description',
+            'created_by', 'created_by_name', 'created_at',
+        ]
+        read_only_fields = ['created_by', 'created_at']
+
+        

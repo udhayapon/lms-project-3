@@ -733,3 +733,39 @@ class ConversationMessage(models.Model):
 
     def __str__(self):
         return f"{self.sender.username} -> {self.receiver.username}"
+    
+# ===================== CALENDAR EVENT =====================
+class CalendarEvent(models.Model):
+
+    TYPE_CHOICES = [
+        ('holiday', 'Holiday / Leave'),
+        ('exam', 'Exam'),
+        ('event', 'Event'),
+    ]
+
+    AUDIENCE_CHOICES = [
+        ('everyone', 'Everyone'),
+        ('teachers', 'Teachers'),
+        ('students', 'Students'),
+        ('parents', 'Parents'),
+    ]
+
+    title = models.CharField(max_length=200)
+    event_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='event')
+    audience = models.CharField(max_length=20, choices=AUDIENCE_CHOICES, default='everyone')
+    year_number = models.IntegerField(null=True, blank=True)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    description = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        'users.User', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='calendar_events'
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['start_date']
+
+    def __str__(self):
+        return f"{self.title} ({self.start_date})"
+    

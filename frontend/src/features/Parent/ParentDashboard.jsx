@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
 import Sidebar from "../../components/Sidebar";
 import API from "../../api";
@@ -6,6 +7,7 @@ import "./ParentModule.css";
 
 export default function ParentDashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   const [data, setData] = useState(null);        // /parent/dashboard/ payload
@@ -76,6 +78,15 @@ export default function ParentDashboard() {
     return "pm-badge gray";
   };
 
+  // show status word in the current language (data value -> translated label)
+  const statusText = (status = "") => {
+    const s = status.toLowerCase();
+    if (s === "graded") return t("graded");
+    if (s === "submitted") return t("submitted");
+    if (s === "pending") return t("pending");
+    return status;
+  };
+
   return (
     <div className="app">
       <Navbar setOpen={setOpen} />
@@ -87,8 +98,8 @@ export default function ParentDashboard() {
 
               {/* ── Header ── */}
               <div className="pm-header">
-                <h1>Welcome, {user?.username || "Parent"}</h1>
-                <p>Parent Dashboard</p>
+                <h1>{t("welcome")}, {user?.username || t("parents")}</h1>
+                <p>{t("parent_dashboard")}</p>
               </div>
 
               {/* ── Child tabs ── */}
@@ -97,7 +108,7 @@ export default function ParentDashboard() {
                   className={`pm-tab ${activeChild === null ? "active" : ""}`}
                   onClick={() => setActiveChild(null)}
                 >
-                  All Children
+                  {t("all_children")}
                 </div>
                 {children.map((c) => (
                   <div
@@ -111,27 +122,27 @@ export default function ParentDashboard() {
               </div>
 
               {loading && !data ? (
-                <div className="pm-loading">Loading dashboard…</div>
+                <div className="pm-loading">{t("loading_dashboard")}</div>
               ) : (
                 <>
                   {/* ── Stat cards ── */}
                   <div className="pm-stat-grid">
                     <div className="pm-stat-card">
-                      <div className="pm-stat-label">Children Enrolled</div>
+                      <div className="pm-stat-label">{t("children_enrolled")}</div>
                       <div className="pm-stat-val blue">{data?.children_enrolled ?? 0}</div>
                     </div>
                     <div className="pm-stat-card">
-                      <div className="pm-stat-label">Pending Fees</div>
+                      <div className="pm-stat-label">{t("pending_fees")}</div>
                       <div className="pm-stat-val orange">
                         ₹{Number(data?.pending_fees || 0).toLocaleString("en-IN")}
                       </div>
                     </div>
                     <div className="pm-stat-card">
-                      <div className="pm-stat-label">Avg Attendance</div>
+                      <div className="pm-stat-label">{t("avg_attendance")}</div>
                       <div className="pm-stat-val green">{data?.avg_attendance ?? 0}%</div>
                     </div>
                     <div className="pm-stat-card">
-                      <div className="pm-stat-label">Pending Assignments</div>
+                      <div className="pm-stat-label">{t("pending_assignments")}</div>
                       <div className="pm-stat-val red">{data?.pending_assignments ?? 0}</div>
                     </div>
                   </div>
@@ -139,13 +150,13 @@ export default function ParentDashboard() {
                   <div className="pm-two-col">
                     {/* ── Recent grades ── */}
                     <div className="pm-card">
-                      <div className="pm-card-title">Recent Grades</div>
+                      <div className="pm-card-title">{t("recent_grades")}</div>
                       {recentGrades.length === 0 ? (
-                        <div className="pm-empty">No grades published yet</div>
+                        <div className="pm-empty">{t("no_grades_yet")}</div>
                       ) : (
                         <table className="pm-table">
                           <thead>
-                            <tr><th>Child</th><th>Subject</th><th>Marks</th><th>Status</th></tr>
+                            <tr><th>{t("child")}</th><th>{t("subject")}</th><th>{t("marks")}</th><th>{t("status")}</th></tr>
                           </thead>
                           <tbody>
                             {recentGrades.map((s) => (
@@ -157,7 +168,7 @@ export default function ParentDashboard() {
                                     ? `${s.marks}/${s.total_marks}`
                                     : "—"}
                                 </td>
-                                <td><span className={statusBadge(s.status)}>{s.status}</span></td>
+                                <td><span className={statusBadge(s.status)}>{statusText(s.status)}</span></td>
                               </tr>
                             ))}
                           </tbody>
@@ -168,9 +179,9 @@ export default function ParentDashboard() {
                     {/* ── Right column: attendance + notifications ── */}
                     <div className="pm-stack">
                       <div className="pm-card">
-                        <div className="pm-card-title">Attendance Overview</div>
+                        <div className="pm-card-title">{t("attendance_overview")}</div>
                         {visibleAttendance.length === 0 ? (
-                          <div className="pm-empty">No attendance recorded</div>
+                          <div className="pm-empty">{t("no_attendance_recorded")}</div>
                         ) : (
                           visibleAttendance.map(([name, a]) => {
                             const pct = a.percentage || 0;
@@ -191,9 +202,9 @@ export default function ParentDashboard() {
                       </div>
 
                       <div className="pm-card">
-                        <div className="pm-card-title">Recent Notifications</div>
+                        <div className="pm-card-title">{t("recent_notifications")}</div>
                         {(data?.recent_notifications || []).length === 0 ? (
-                          <div className="pm-empty">No notifications</div>
+                          <div className="pm-empty">{t("no_notifications")}</div>
                         ) : (
                           data.recent_notifications.map((n) => (
                             <div className="pm-notif-item" key={n.id}>

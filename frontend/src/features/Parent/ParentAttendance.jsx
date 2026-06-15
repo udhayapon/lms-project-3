@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
 import Sidebar from "../../components/Sidebar";
 import API from "../../api";
 import "./ParentModule.css";
 
 export default function ParentAttendance() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [children, setChildren] = useState([]);
   const [activeChild, setActiveChild] = useState(null);
@@ -32,8 +34,8 @@ export default function ParentAttendance() {
 
   useEffect(() => {
     fetchData();
-    const t = setInterval(fetchData, 15000);
-    return () => clearInterval(t);
+    const tmr = setInterval(fetchData, 15000);
+    return () => clearInterval(tmr);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeChild]);
 
@@ -63,6 +65,12 @@ export default function ParentAttendance() {
     return "pm-badge red";
   };
 
+  const pctLabel = (pct) => {
+    if (pct >= 90) return t("good");
+    if (pct >= 75) return t("average");
+    return t("low");
+  };
+
   return (
     <div className="app">
       <Navbar setOpen={setOpen} />
@@ -73,8 +81,8 @@ export default function ParentAttendance() {
             <div className="pm-page">
 
               <div className="pm-header">
-                <h1>Attendance</h1>
-                <p>Attendance records for your children</p>
+                <h1>{t("attendance")}</h1>
+                <p>{t("attendance_records_children")}</p>
               </div>
 
               <div className="pm-tabs">
@@ -82,7 +90,7 @@ export default function ParentAttendance() {
                   className={`pm-tab ${activeChild === null ? "active" : ""}`}
                   onClick={() => setActiveChild(null)}
                 >
-                  All Children
+                  {t("all_children")}
                 </div>
                 {children.map((c) => (
                   <div
@@ -96,34 +104,34 @@ export default function ParentAttendance() {
               </div>
 
               {loading ? (
-                <div className="pm-loading">Loading attendance…</div>
+                <div className="pm-loading">{t("loading_attendance")}</div>
               ) : (
                 <>
                   <div className="pm-stat-grid three">
                     <div className="pm-stat-card">
-                      <div className="pm-stat-label">Total classes</div>
+                      <div className="pm-stat-label">{t("total_classes")}</div>
                       <div className="pm-stat-val">{total}</div>
                     </div>
                     <div className="pm-stat-card">
-                      <div className="pm-stat-label">Present</div>
+                      <div className="pm-stat-label">{t("present")}</div>
                       <div className="pm-stat-val green">{present}</div>
                     </div>
                     <div className="pm-stat-card">
-                      <div className="pm-stat-label">Absent</div>
+                      <div className="pm-stat-label">{t("absent")}</div>
                       <div className="pm-stat-val red">{absent}</div>
                     </div>
                   </div>
 
                   <div className="pm-card">
-                    <div className="pm-card-title">Subject-wise attendance</div>
+                    <div className="pm-card-title">{t("subject_wise_attendance")}</div>
                     {subjectRows.length === 0 ? (
-                      <div className="pm-empty">No attendance recorded</div>
+                      <div className="pm-empty">{t("no_attendance_recorded")}</div>
                     ) : (
                       <table className="pm-table">
                         <thead>
                           <tr>
-                            <th>Child</th><th>Subject</th><th>Total</th>
-                            <th>Present</th><th>Absent</th><th>%</th><th>Status</th>
+                            <th>{t("child")}</th><th>{t("subject")}</th><th>{t("total")}</th>
+                            <th>{t("present")}</th><th>{t("absent")}</th><th>%</th><th>{t("status")}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -136,7 +144,7 @@ export default function ParentAttendance() {
                               <td>{s.absent}</td>
                               <td>{s.pct}%</td>
                               <td><span className={pctBadge(s.pct)}>
-                                {s.pct >= 90 ? "Good" : s.pct >= 75 ? "Average" : "Low"}
+                                {pctLabel(s.pct)}
                               </span></td>
                             </tr>
                           ))}
